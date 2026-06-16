@@ -40,7 +40,7 @@ typedef struct
 
 
 #define uMod_APP_DIR L"uMod_Reforged"
-#define uMod_VERSION L"uMod_Reforged V 1.0"
+#define uMod_VERSION L"uMod_Reforged V 1.1"
 
 #define PIPE_uMod2Game L"\\\\.\\pipe\\uMod_Reforged2Game"
 #define PIPE_Game2uMod L"\\\\.\\pipe\\Game2uMod_Reforged"
