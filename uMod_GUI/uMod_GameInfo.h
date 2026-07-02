@@ -73,6 +73,9 @@ public:
   int SetSavePath(const wxString &path) {SavePath=path; return 0;}
   wxString GetSavePath(void) const {return SavePath;}
 
+  int SetPackagePath(const wxString &path) {PackagePath=path; return 0;}
+  wxString GetPackagePath(void) const {return PackagePath;}
+
   uMod_GameInfo& operator = (const  uMod_GameInfo &rhs);
 
 private:
@@ -95,6 +98,7 @@ private:
 
   wxString OpenPath;
   wxString SavePath;
+  wxString PackagePath;
 };
 
 

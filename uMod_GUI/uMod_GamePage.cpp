@@ -33,6 +33,11 @@ static wxString GetDefaultModsStatePath(void)
   return GetReforgedAppDataPath("uMod_Reforged_DefaultModsEnabled.txt");
 }
 
+static wxString GetModMakerSettingsPath(void)
+{
+  return GetReforgedAppDataPath("uMod_Reforged_ModMaker.txt");
+}
+
 static wxString SuggestPackageNameFromContext(const wxString &save_path, const wxString &exe_name)
 {
   wxString suggested;
@@ -151,6 +156,13 @@ uMod_GamePage::uMod_GamePage( wxWindow *parent, const wxString &exe, const wxStr
   savePathRow->Add( (wxWindow*) DirectoryButton, 0, wxRIGHT, 10);
   savePathRow->Add( (wxWindow*) SavePath, 1, wxEXPAND, 0);
   captureSizer->Add( savePathRow, 0, wxEXPAND | wxBOTTOM, 10);
+
+  wxBoxSizer *packagePathRow = new wxBoxSizer(wxHORIZONTAL);
+  PackageDirectoryButton = new wxButton( ModMakerPanel, wxID_ANY, "Set package source", wxDefaultPosition, wxSize(180,28));
+  PackagePath = new wxTextCtrl(ModMakerPanel, wxID_ANY, "Package source: ", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
+  packagePathRow->Add( (wxWindow*) PackageDirectoryButton, 0, wxRIGHT, 10);
+  packagePathRow->Add( (wxWindow*) PackagePath, 1, wxEXPAND, 0);
+  captureSizer->Add( packagePathRow, 0, wxEXPAND | wxBOTTOM, 10);
 
   wxStaticBoxSizer *keybindSizer = new wxStaticBoxSizer(wxVERTICAL, ModMakerPanel, "Keybinds");
   wxFlexGridSizer *keyGrid = new wxFlexGridSizer(3, 2, 8, 10);
@@ -279,6 +291,7 @@ uMod_GamePage::uMod_GamePage( wxWindow *parent, const wxString &exe, const wxStr
   if (GetMemory( CheckButtonDown, MaxNumberOfEntry)) {LastError = Language->Error_Memory; return;}
   if (GetMemory( CheckButtonDelete, MaxNumberOfEntry)) {LastError = Language->Error_Memory; return;}
   SavePath->SetValue(Language->TextCtrlSavePath);
+  PackagePath->SetValue("Package source: ");
   RefreshSavedTextures();
 
   ModMakerPanel->SetSizer(ModMakerSizer);
@@ -296,12 +309,19 @@ uMod_GamePage::uMod_GamePage( wxWindow *parent, const wxString &exe, const wxStr
   Bind( wxEVT_COMMAND_CHECKBOX_CLICKED, &uMod_GamePage::OnToggleLoadDefaultMods, this, LoadDefaultMods->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonSavePackage, this, SavePackageButton->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonRefreshTextures, this, RefreshTexturesButton->GetId());
+  Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonPackageDirectory, this, PackageDirectoryButton->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonOpenSaveFolder, this, OpenSaveFolderButton->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonSelectAllTextures, this, SelectAllTexturesButton->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonClearTextureSelection, this, ClearTextureSelectionButton->GetId());
   Bind( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, &uMod_GamePage::OnSavedTexturesToggle, this, SavedTexturesList->GetId());
   Bind( wxEVT_COMMAND_BUTTON_CLICKED, &uMod_GamePage::OnButtonResetSettings, this, ResetSettingsButton->GetId());
+  Bind( wxEVT_COMMAND_CHOICE_SELECTED, &uMod_GamePage::OnModMakerSettingsChanged, this, ChoiceKeyBack->GetId());
+  Bind( wxEVT_COMMAND_CHOICE_SELECTED, &uMod_GamePage::OnModMakerSettingsChanged, this, ChoiceKeyNext->GetId());
+  Bind( wxEVT_COMMAND_CHOICE_SELECTED, &uMod_GamePage::OnModMakerSettingsChanged, this, ChoiceKeySave->GetId());
+  Bind( wxEVT_COMMAND_CHECKBOX_CLICKED, &uMod_GamePage::OnModMakerSettingsChanged, this, SaveSingleTexture->GetId());
+  Bind( wxEVT_COMMAND_CHECKBOX_CLICKED, &uMod_GamePage::OnModMakerSettingsChanged, this, SaveAllTextures->GetId());
   UpdateLaunchState();
+  LoadModMakerSettings();
   LoadDefaultModsList();
   if (LoadDefaultMods->GetValue()) ApplyDefaultMods();
   else ClearModsList(false);
@@ -337,6 +357,7 @@ void uMod_GamePage::EnableOpenButton( bool enable)
 void uMod_GamePage::EnableGameControls( bool enable)
 {
   if (DirectoryButton!=NULL) DirectoryButton->Enable(true);
+  if (PackageDirectoryButton!=NULL) PackageDirectoryButton->Enable(true);
   if (UpdateButton!=NULL) UpdateButton->Enable(enable);
   if (ReloadButton!=NULL) ReloadButton->Enable(enable);
   if (SavePackageButton!=NULL) SavePackageButton->Enable(true);
@@ -649,10 +670,11 @@ void uMod_GamePage::RefreshSavedTextures(void)
   SavedTexturesList->Clear();
   SavedTextureFiles.Clear();
 
-  wxString path = Game.GetSavePath();
+  wxString path = Game.GetPackagePath();
+  if (path.IsEmpty()) path = Game.GetSavePath();
   if (path.IsEmpty())
   {
-    SavedTexturesList->Append(Language->SavedTexturesHint);
+    SavedTexturesList->Append("Set a package source folder containing altered DDS files.");
     UpdateSavedTexturesListSize();
     return;
   }
@@ -930,8 +952,100 @@ int uMod_GamePage::SetSavePath( const wxString &path)
   save_path << path;
   SavePath->SetValue(save_path);
   Game.SetSavePath( path);
+  PersistModMakerSettings();
   RefreshSavedTextures();
   return 0;
+}
+
+int uMod_GamePage::SetPackagePath( const wxString &path)
+{
+  wxString package_path = "Package source: ";
+  package_path << path;
+  PackagePath->SetValue(package_path);
+  Game.SetPackagePath( path);
+  PersistModMakerSettings();
+  RefreshSavedTextures();
+  return 0;
+}
+
+int uMod_GamePage::LoadModMakerSettings(void)
+{
+  if (Game.LoadFromFile(GetModMakerSettingsPath())) return 0;
+  ApplyModMakerSettingsToControls();
+  RefreshSavedTextures();
+  return 0;
+}
+
+int uMod_GamePage::PersistModMakerSettings(void)
+{
+  if (ChoiceKeyBack!=NULL && ChoiceKeyBack->GetSelection()!=wxNOT_FOUND) Game.SetKeyBack(ChoiceKeyBack->GetSelection());
+  if (ChoiceKeySave!=NULL && ChoiceKeySave->GetSelection()!=wxNOT_FOUND) Game.SetKeySave(ChoiceKeySave->GetSelection());
+  if (ChoiceKeyNext!=NULL && ChoiceKeyNext->GetSelection()!=wxNOT_FOUND) Game.SetKeyNext(ChoiceKeyNext->GetSelection());
+
+  if (SaveSingleTexture!=NULL) Game.SetSaveSingleTexture(SaveSingleTexture->GetValue());
+  if (SaveAllTextures!=NULL) Game.SetSaveAllTextures(SaveAllTextures->GetValue());
+
+  if (FontColour[1]!=NULL && FontColour[2]!=NULL && FontColour[3]!=NULL)
+  {
+    int colour[3];
+    colour[0] = GetColour(FontColour[1], 255);
+    colour[1] = GetColour(FontColour[2], 0);
+    colour[2] = GetColour(FontColour[3], 0);
+    Game.SetFontColour(colour);
+  }
+
+  if (TextureColour[1]!=NULL && TextureColour[2]!=NULL && TextureColour[3]!=NULL)
+  {
+    int colour[3];
+    colour[0] = GetColour(TextureColour[1], 0);
+    colour[1] = GetColour(TextureColour[2], 255);
+    colour[2] = GetColour(TextureColour[3], 0);
+    Game.SetTextureColour(colour);
+  }
+
+  Game.SetFiles(Files);
+  if (NumberOfEntry>0)
+  {
+    bool *checked = NULL;
+    if (GetMemory(checked, NumberOfEntry)) return -1;
+    for (int i=0; i<NumberOfEntry; i++) checked[i] = CheckBoxes[i]->GetValue();
+    Game.SetChecked(checked, NumberOfEntry);
+    delete [] checked;
+  }
+
+  return Game.SaveToFile(GetModMakerSettingsPath());
+}
+
+void uMod_GamePage::ApplyModMakerSettingsToControls(void)
+{
+  int key = Game.GetKeyBack();
+  if (key>=0 && key<(int)ChoiceKeyBack->GetCount()) ChoiceKeyBack->SetSelection(key);
+  key = Game.GetKeyNext();
+  if (key>=0 && key<(int)ChoiceKeyNext->GetCount()) ChoiceKeyNext->SetSelection(key);
+  key = Game.GetKeySave();
+  if (key>=0 && key<(int)ChoiceKeySave->GetCount()) ChoiceKeySave->SetSelection(key);
+
+  SaveSingleTexture->SetValue(Game.GetSaveSingleTexture());
+  SaveAllTextures->SetValue(Game.GetSaveAllTextures());
+
+  int colour[3];
+  Game.GetFontColour(colour);
+  SetColour(&FontColour[1], colour);
+  Game.GetTextureColour(colour);
+  SetColour(&TextureColour[1], colour);
+
+  wxString save_path = Language->TextCtrlSavePath;
+  save_path << Game.GetSavePath();
+  SavePath->SetValue(save_path);
+
+  wxString package_path = "Package source: ";
+  package_path << Game.GetPackagePath();
+  PackagePath->SetValue(package_path);
+}
+
+void uMod_GamePage::OnModMakerSettingsChanged(wxCommandEvent& WXUNUSED(event))
+{
+  PersistModMakerSettings();
 }
 
 
@@ -1041,6 +1155,7 @@ int uMod_GamePage::GetSettings(void)
   Game.SetChecked( checked, NumberOfEntry);
   delete [] checked;
 
+  PersistModMakerSettings();
   return 0;
 }
 
@@ -1090,10 +1205,11 @@ int uMod_GamePage::ReloadGame(void)
 void uMod_GamePage::OnButtonSavePackage(wxCommandEvent& WXUNUSED(event))
 {
   if (SavedTexturesList==NULL) return;
-  wxString save_path = Game.GetSavePath();
-  if (save_path.IsEmpty())
+  wxString package_path = Game.GetPackagePath();
+  if (package_path.IsEmpty()) package_path = Game.GetSavePath();
+  if (package_path.IsEmpty())
   {
-    wxMessageBox(Language->Error_NoSavePath, "ERROR", wxOK|wxICON_ERROR);
+    wxMessageBox("Set a package source folder containing altered DDS files.", "ERROR", wxOK|wxICON_ERROR);
     return;
   }
 
@@ -1119,10 +1235,10 @@ void uMod_GamePage::OnButtonSavePackage(wxCommandEvent& WXUNUSED(event))
   author.Trim(false);
 
   wxString default_name = package_name;
-  if (default_name.IsEmpty()) default_name = SuggestPackageNameFromContext(save_path, ExeName);
+  if (default_name.IsEmpty()) default_name = SuggestPackageNameFromContext(package_path, ExeName);
   if (PackageName != NULL && package_name.IsEmpty()) PackageName->SetValue(default_name);
 
-  wxFileDialog save_dialog(this, Language->SavePackageDialog, save_path, default_name, "tpf files (*.tpf)|*.tpf", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+  wxFileDialog save_dialog(this, Language->SavePackageDialog, package_path, default_name, "tpf files (*.tpf)|*.tpf", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
   if (save_dialog.ShowModal() != wxID_OK) return;
   wxString output_path = save_dialog.GetPath();
   if (!output_path.Lower().EndsWith(".tpf")) output_path << ".tpf";
@@ -1167,10 +1283,17 @@ void uMod_GamePage::OnButtonRefreshTextures(wxCommandEvent& WXUNUSED(event))
   RefreshSavedTextures();
 }
 
+void uMod_GamePage::OnButtonPackageDirectory(wxCommandEvent& WXUNUSED(event))
+{
+  wxString dir = wxDirSelector("Choose altered DDS package source", GetPackagePath());
+  if (!dir.empty()) SetPackagePath(dir);
+}
+
 void uMod_GamePage::OnButtonOpenSaveFolder(wxCommandEvent& WXUNUSED(event))
 {
-  wxString save_path = Game.GetSavePath();
-  if (!save_path.IsEmpty()) wxLaunchDefaultApplication(save_path);
+  wxString package_path = Game.GetPackagePath();
+  if (package_path.IsEmpty()) package_path = Game.GetSavePath();
+  if (!package_path.IsEmpty()) wxLaunchDefaultApplication(package_path);
 }
 
 void uMod_GamePage::OnButtonSelectAllTextures(wxCommandEvent& WXUNUSED(event))
@@ -1320,6 +1443,7 @@ int uMod_GamePage::UpdateLanguage(void)
   OpenButton->SetLabel( Language->ButtonOpen);
   OpenButtonHint->SetLabel( Language->SelectModsHint);
   DirectoryButton->SetLabel( Language->ButtonDirectory);
+  if (PackageDirectoryButton!=NULL) PackageDirectoryButton->SetLabel( "Set package source");
   UpdateButton->SetLabel( Language->ButtonUpdate);
   ReloadButton->SetLabel( Language->ButtonReload);
   if (ModsSizer!=NULL && ModsSizer->GetStaticBox()!=NULL)
@@ -1348,6 +1472,9 @@ int uMod_GamePage::UpdateLanguage(void)
   wxString temp = Language->TextCtrlSavePath;
   temp << Game.GetSavePath();
   SavePath->SetValue( temp);
+  wxString package_temp = "Package source: ";
+  package_temp << Game.GetPackagePath();
+  PackagePath->SetValue( package_temp);
   RefreshSavedTextures();
   return 0;
 }

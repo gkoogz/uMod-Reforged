@@ -48,6 +48,7 @@ void uMod_GameInfo::Init(void)
   TextureColour[0]=0;TextureColour[1]=255;TextureColour[2]=0;
   NumberOfChecked = 0;
   SavePath.Empty();
+  PackagePath.Empty();
   OpenPath.Empty();
   Files.Empty();
 }
@@ -64,6 +65,12 @@ int uMod_GameInfo::SaveToFile( const wxString &file_name)
   if (SavePath.Len()>0)
   {
     content.Printf( L"SavePath:%ls\n", SavePath.wc_str());
+    file.Write( content.char_str(), content.Len());
+  }
+
+  if (PackagePath.Len()>0)
+  {
+    content.Printf( L"PackagePath:%ls\n", PackagePath.wc_str());
     file.Write( content.char_str(), content.Len());
   }
 
@@ -175,6 +182,7 @@ int uMod_GameInfo::LoadFromFile( const wxString &file_name)
       Files.Add(line.AfterFirst(':'));
     }
     else if (command == L"SavePath") SavePath = line.AfterFirst(':');
+    else if (command == L"PackagePath") PackagePath = line.AfterFirst(':');
     else if (command == L"OpenPath") OpenPath = line.AfterFirst(':');
     else if (command == L"SaveAllTextures")
     {
@@ -322,6 +330,7 @@ uMod_GameInfo& uMod_GameInfo::operator = (const  uMod_GameInfo &rhs)
   for (int i=0; i<NumberOfChecked; i++) Checked[i] = rhs.Checked[i];
 
   SavePath = rhs.SavePath;
+  PackagePath = rhs.PackagePath;
   OpenPath = rhs.OpenPath;
   Files = rhs.Files;
 

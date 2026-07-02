@@ -48,6 +48,8 @@ public:
   int SetSavePath(const wxString &path);
   wxString GetSavePath(void) {return Game.GetSavePath();}
 
+  int SetPackagePath(const wxString &path);
+  wxString GetPackagePath(void) {return Game.GetPackagePath();}
 
   void OnButtonUp(wxCommandEvent& WXUNUSED(event));
   void OnButtonDown(wxCommandEvent& WXUNUSED(event));
@@ -64,6 +66,10 @@ private:
   void UpdateLaunchState(void);
   int PersistLauncherSettings(const wxString &exe_path, const wxString &command_line);
   void SetExePath(const wxString &path);
+  int LoadModMakerSettings(void);
+  int PersistModMakerSettings(void);
+  void ApplyModMakerSettingsToControls(void);
+  void OnModMakerSettingsChanged(wxCommandEvent& WXUNUSED(event));
   void OnModCheck(wxCommandEvent& WXUNUSED(event));
   void OnToggleLoadDefaultMods(wxCommandEvent& WXUNUSED(event));
   void OnButtonResetSettings(wxCommandEvent& WXUNUSED(event));
@@ -81,6 +87,7 @@ private:
   int CreateTpfPackage(const wxString &output_path, const wxArrayString &files, const wxString &name, const wxString &author);
   void OnButtonSavePackage(wxCommandEvent& WXUNUSED(event));
   void OnButtonRefreshTextures(wxCommandEvent& WXUNUSED(event));
+  void OnButtonPackageDirectory(wxCommandEvent& WXUNUSED(event));
   void OnButtonOpenSaveFolder(wxCommandEvent& WXUNUSED(event));
   void OnButtonSelectAllTextures(wxCommandEvent& WXUNUSED(event));
   void OnButtonClearTextureSelection(wxCommandEvent& WXUNUSED(event));
@@ -123,6 +130,7 @@ private:
   wxButton *OpenButton;
   wxStaticText *OpenButtonHint;
   wxButton *DirectoryButton;
+  wxButton *PackageDirectoryButton;
   wxButton *UpdateButton;
   wxButton *ReloadButton;
 
@@ -130,6 +138,7 @@ private:
   wxCheckBox *SaveAllTextures;
   wxCheckBox *SaveSingleTexture;
   wxTextCtrl *SavePath;
+  wxTextCtrl *PackagePath;
   wxCheckListBox *SavedTexturesList;
   wxStaticText *SavedTexturesSummaryText;
   wxButton *RefreshTexturesButton;
