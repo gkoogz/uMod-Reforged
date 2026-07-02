@@ -2608,32 +2608,6 @@ ZRESULT TZip::Add(const TCHAR *odstzn, void *src,unsigned int len, DWORD flags)
   zfi.dsk = 0;
   zfi.atx = attr;
   zfi.off = writ+ooffset;         // offset within file of the start of this local record
-  // stuff the 'times' structure into zfi.extra
-
-  // nb. apparently there's a problem with PocketPC CE(zip)->CE(unzip) fails. And removing the following block fixes it up.
-  char xloc[EB_L_UT_SIZE]; zfi.extra=xloc;  zfi.ext=EB_L_UT_SIZE;
-  char xcen[EB_C_UT_SIZE]; zfi.cextra=xcen; zfi.cext=EB_C_UT_SIZE;
-  xloc[0]  = 'U';
-  xloc[1]  = 'T';
-  xloc[2]  = EB_UT_LEN(3);       // length of data part of e.f.
-  xloc[3]  = 0;
-  xloc[4]  = EB_UT_FL_MTIME | EB_UT_FL_ATIME | EB_UT_FL_CTIME;
-  xloc[5]  = (char)(times.mtime);
-  xloc[6]  = (char)(times.mtime >> 8);
-  xloc[7]  = (char)(times.mtime >> 16);
-  xloc[8]  = (char)(times.mtime >> 24);
-  xloc[9]  = (char)(times.atime);
-  xloc[10] = (char)(times.atime >> 8);
-  xloc[11] = (char)(times.atime >> 16);
-  xloc[12] = (char)(times.atime >> 24);
-  xloc[13] = (char)(times.ctime);
-  xloc[14] = (char)(times.ctime >> 8);
-  xloc[15] = (char)(times.ctime >> 16);
-  xloc[16] = (char)(times.ctime >> 24);
-  memcpy(zfi.cextra,zfi.extra,EB_C_UT_SIZE);
-  zfi.cextra[EB_LEN] = EB_UT_LEN(1);
-
-
   // (1) Start by writing the local header:
   int r = putlocal(&zfi,swrite,this);
   if (r!=ZE_OK) {iclose(); return ZR_WRITE;}
