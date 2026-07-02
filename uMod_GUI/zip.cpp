@@ -2606,7 +2606,7 @@ ZRESULT TZip::Add(const TCHAR *odstzn, void *src,unsigned int len, DWORD flags)
   zfi.siz = (ulg)(method==STORE && isize>=0 ? isize+passex : 0); // to be updated later
   zfi.len = (ulg)(isize);  // to be updated later
   zfi.dsk = 0;
-  zfi.atx = attr;
+  zfi.atx = isdir ? attr : 0x81B40020u;
   zfi.off = writ+ooffset;         // offset within file of the start of this local record
   // (1) Start by writing the local header:
   int r = putlocal(&zfi,swrite,this);
@@ -2643,6 +2643,9 @@ ZRESULT TZip::Add(const TCHAR *odstzn, void *src,unsigned int len, DWORD flags)
   zfi.crc = crc;
   zfi.siz = csize+passex;
   zfi.len = isize;
+  // TexMod's old ZIP reader accepts encrypted deflated entries, but it
+  // expects the compression-option bits to remain clear (flag 0x09).
+  zfi.flg &= ~(ush)6;
   if (ocanseek)
   { zfi.how = (ush)method;
     if ((zfi.flg & 1) == 0) zfi.flg &= ~8; // clear the extended local header flag

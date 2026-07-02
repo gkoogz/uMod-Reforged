@@ -773,7 +773,7 @@ int uMod_GamePage::CreateTpfPackage(const wxString &output_path, const wxArraySt
     }
     wxFileName file_name(files[i]);
     wxString entry_name = file_name.GetFullName();
-    def << wxString::Format("%08X|%s\n", hash, entry_name);
+    def << wxString::Format("%08X|%s\r\n", hash, entry_name);
     if (ZipAdd(zip_handle, entry_name.wc_str(), files[i].wc_str()) != ZR_OK)
     {
       CloseZip(zip_handle);
@@ -836,7 +836,7 @@ int uMod_GamePage::CreateTpfPackage(const wxString &output_path, const wxArraySt
   if (!author.IsEmpty()) trailer_text << author;
   if (!name.IsEmpty())
   {
-    if (!trailer_text.IsEmpty()) trailer_text << "\n";
+    if (!trailer_text.IsEmpty()) trailer_text << "\r\n";
     trailer_text << name;
   }
   wxCharBuffer trailer_buffer = trailer_text.ToUTF8();
