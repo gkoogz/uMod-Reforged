@@ -2619,9 +2619,13 @@ ZRESULT TZip::Add(const TCHAR *odstzn, void *src,unsigned int len, DWORD flags)
   keys[1]=591751049L;
   keys[2]=878082192L;
   for (const char *cp=password; cp!=0 && *cp!=0; cp++) update_keys(keys,*cp);
-  // generate some random bytes
-  if (!has_seeded) srand(GetTickCount()^(unsigned long)GetDesktopWindow());
-  char encbuf[12]; for (int i=0; i<12; i++) encbuf[i]=(char)((rand()>>7)&0xff);
+  // TexMod-generated packages use a fixed ZipCrypto header seed. Some old
+  // TexMod builds are brittle, so keep this byte-for-byte compatible.
+  static const unsigned char texmod_header_seed[11] = {
+    0xD3, 0xA3, 0x9C, 0x92, 0xAF, 0x7B, 0x51, 0x2D, 0x64, 0xC8, 0xCC
+  };
+  char encbuf[12];
+  for (int i=0; i<11; i++) encbuf[i]=(char)texmod_header_seed[i];
   encbuf[11] = (char)((zfi.tim>>8)&0xff);
   for (int ei=0; ei<12; ei++) encbuf[ei]=zencode(keys,encbuf[ei]);
   if (password!=0 && !isdir) {swrite(this,encbuf,12); writ+=12;}
