@@ -784,7 +784,9 @@ int uMod_GamePage::CreateTpfPackage(const wxString &output_path, const wxArraySt
   }
 
   wxCharBuffer def_buffer = def.ToUTF8();
-  if (ZipAdd(zip_handle, L"texmod.def", (void*)def_buffer.data(), def_buffer.length()) != ZR_OK)
+  // TexMod includes the trailing NUL byte in texmod.def. Older TexMod builds
+  // are picky about this when launching packages produced by other tools.
+  if (ZipAdd(zip_handle, L"texmod.def", (void*)def_buffer.data(), def_buffer.length()+1) != ZR_OK)
   {
     CloseZip(zip_handle);
     wxRemoveFile(temp_path);
@@ -833,12 +835,9 @@ int uMod_GamePage::CreateTpfPackage(const wxString &output_path, const wxArraySt
   }
 
   wxString trailer_text;
-  if (!author.IsEmpty()) trailer_text << author;
-  if (!name.IsEmpty())
-  {
-    if (!trailer_text.IsEmpty()) trailer_text << "\r\n";
-    trailer_text << name;
-  }
+  // TexMod always stores the creator/comment field as "creator\r\ncomment".
+  // If both UI fields are blank, this still leaves a two-byte CRLF comment.
+  trailer_text << author << "\r\n" << name;
   wxCharBuffer trailer_buffer = trailer_text.ToUTF8();
   unsigned long trailer_len = trailer_buffer.length();
   unsigned long total_len = zip_len + trailer_len;

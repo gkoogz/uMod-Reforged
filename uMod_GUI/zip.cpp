@@ -2654,6 +2654,11 @@ ZRESULT TZip::Add(const TCHAR *odstzn, void *src,unsigned int len, DWORD flags)
     if (!oseek(zfi.off-ooffset)) return ZR_SEEK;
     if ((r = putlocal(&zfi, swrite,this)) != ZE_OK) return ZR_WRITE;
     if (!oseek(writ)) return ZR_SEEK;
+    if ((zfi.flg & 8) != 0)
+    {
+      if ((r = putextended(&zfi, swrite,this)) != ZE_OK) return ZR_WRITE;
+      writ += 16L;
+    }
   }
   else
   { // (4) ... or put an updated header at the end

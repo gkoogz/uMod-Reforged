@@ -4,7 +4,7 @@ uMod Reforged is a modern revival of the classic uMod texture modding tool for G
 
 [Download the latest release](https://github.com/gkoogz/uMod-Reforged/releases/latest)
 
-![uMod Reforged v1.3](docs/images/umod-reforged-v1.3.png)
+![uMod Reforged v1.4](docs/images/umod-reforged-v1.3.png)
 
 Highlights in this refreshed version include:
 

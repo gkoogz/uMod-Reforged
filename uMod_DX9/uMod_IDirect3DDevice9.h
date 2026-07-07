@@ -181,6 +181,8 @@ public:
   uMod_IDirect3DVolumeTexture9* GetSingleVolumeTexture(void) {return (SingleVolumeTexture);}
   uMod_IDirect3DCubeTexture9* GetSingleCubeTexture(void) {return (SingleCubeTexture);}
 
+  int TextureContentChanged(uMod_IDirect3DTexture9* pTexture);
+
 
  private:
 	int CreateSingleTexture(void);

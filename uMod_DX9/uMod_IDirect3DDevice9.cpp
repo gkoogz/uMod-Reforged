@@ -28,6 +28,16 @@ along with Universal Modding Engine.  If not, see <http://www.gnu.org/licenses/>
 #define PRE_MESSAGE "uMod_IDirect3DDevice9"
 #endif
 
+#define uMod_FLUSH_PENDING_TEXTURES() \
+{ \
+  if (uMod_Client!=NULL) \
+  { \
+    if (LastCreatedTexture!=NULL) uMod_Client->AddTexture(LastCreatedTexture); \
+    if (LastCreatedVolumeTexture!=NULL) uMod_Client->AddTexture(LastCreatedVolumeTexture); \
+    if (LastCreatedCubeTexture!=NULL) uMod_Client->AddTexture(LastCreatedCubeTexture); \
+  } \
+}
+
 
 int uMod_IDirect3DDevice9::CreateSingleTexture(void)
 {
@@ -222,6 +232,34 @@ ULONG uMod_IDirect3DDevice9::Release(void)
 HRESULT uMod_IDirect3DDevice9::TestCooperativeLevel(void)
 {
   return(m_pIDirect3DDevice9->TestCooperativeLevel());
+}
+
+int uMod_IDirect3DDevice9::TextureContentChanged(uMod_IDirect3DTexture9* pTexture)
+{
+  if (uMod_Client==NULL || pTexture==NULL || pTexture->FAKE) return (RETURN_OK);
+
+  if (pTexture==LastCreatedTexture)
+  {
+    return (uMod_Client->AddTexture(pTexture));
+  }
+
+  if (pTexture->Reference<0) return (RETURN_OK);
+
+  MyTypeHash hash;
+  if (pTexture->GetHash(hash)!=RETURN_OK)
+  {
+    if (pTexture->CrossRef_D3Dtex!=NULL) UnswitchTextures(pTexture);
+    return (RETURN_OK);
+  }
+
+  if (hash!=pTexture->Hash)
+  {
+    pTexture->Hash = hash;
+    if (pTexture->CrossRef_D3Dtex!=NULL) UnswitchTextures(pTexture);
+    return (uMod_Client->LookUpToMod(pTexture));
+  }
+
+  return (RETURN_OK);
 }
 
 UINT uMod_IDirect3DDevice9::GetAvailableTextureMem(void)
@@ -485,7 +523,7 @@ HRESULT uMod_IDirect3DDevice9::UpdateTexture(IDirect3DBaseTexture9* pSourceTextu
 
   if (pDestinationTexture != NULL)
   {
-    long int ret = pSourceTexture->QueryInterface( IID_IDirect3D9, (void**) &cpy);
+    long int ret = pDestinationTexture->QueryInterface( IID_IDirect3D9, (void**) &cpy);
     switch (ret)
     {
       case 0x01000000L:
@@ -936,11 +974,26 @@ HRESULT uMod_IDirect3DDevice9::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pT
 	  switch (ret)
 	  {
 	    case 0x01000000L:
-	      pTexture = ((uMod_IDirect3DTexture9*)(pTexture))->m_D3Dtex; break;
+	    {
+	      uMod_IDirect3DTexture9 *texture = (uMod_IDirect3DTexture9*)pTexture;
+	      if (uMod_Client!=NULL && texture==LastCreatedTexture) uMod_Client->AddTexture(texture);
+	      pTexture = texture->m_D3Dtex;
+	      break;
+	    }
       case 0x01000001L:
-        pTexture = ((uMod_IDirect3DVolumeTexture9*)(pTexture))->m_D3Dtex; break;
+      {
+        uMod_IDirect3DVolumeTexture9 *texture = (uMod_IDirect3DVolumeTexture9*)pTexture;
+        if (uMod_Client!=NULL && texture==LastCreatedVolumeTexture) uMod_Client->AddTexture(texture);
+        pTexture = texture->m_D3Dtex;
+        break;
+      }
       case 0x01000002L:
-        pTexture = ((uMod_IDirect3DCubeTexture9*)(pTexture))->m_D3Dtex; break;
+      {
+        uMod_IDirect3DCubeTexture9 *texture = (uMod_IDirect3DCubeTexture9*)pTexture;
+        if (uMod_Client!=NULL && texture==LastCreatedCubeTexture) uMod_Client->AddTexture(texture);
+        pTexture = texture->m_D3Dtex;
+        break;
+      }
 	    default:
 	      break; // this is no fake texture and QueryInterface failed, because IDirect3DBaseTexture9 object cannot be a IDirect3D9 object ;)
 	  }
@@ -1031,21 +1084,25 @@ float	uMod_IDirect3DDevice9::GetNPatchMode(void)
 
 HRESULT uMod_IDirect3DDevice9::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount)
 {
+  uMod_FLUSH_PENDING_TEXTURES();
   return(m_pIDirect3DDevice9->DrawPrimitive(PrimitiveType,StartVertex,PrimitiveCount));
 }
 
 HRESULT uMod_IDirect3DDevice9::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount)
 {
+  uMod_FLUSH_PENDING_TEXTURES();
   return(m_pIDirect3DDevice9->DrawIndexedPrimitive(PrimitiveType,BaseVertexIndex,MinVertexIndex,NumVertices,startIndex,primCount));
 }
 
 HRESULT uMod_IDirect3DDevice9::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
+  uMod_FLUSH_PENDING_TEXTURES();
   return(m_pIDirect3DDevice9->DrawPrimitiveUP(PrimitiveType,PrimitiveCount,pVertexStreamZeroData,VertexStreamZeroStride));
 }
 
 HRESULT uMod_IDirect3DDevice9::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
+  uMod_FLUSH_PENDING_TEXTURES();
   return(m_pIDirect3DDevice9->DrawIndexedPrimitiveUP(PrimitiveType,MinVertexIndex,NumVertices,PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData,VertexStreamZeroStride));
 }
 

@@ -225,8 +225,19 @@ HRESULT APIENTRY uMod_IDirect3DTexture9::LockRect(UINT Level,D3DLOCKED_RECT* pLo
 //this function yields for the non switched texture object
 HRESULT APIENTRY uMod_IDirect3DTexture9::UnlockRect(UINT Level)
 {
-  if (CrossRef_D3Dtex!=NULL) return (CrossRef_D3Dtex->m_D3Dtex->UnlockRect(Level));
-	return (m_D3Dtex->UnlockRect(Level));
+  HRESULT ret;
+  if (CrossRef_D3Dtex!=NULL) ret = CrossRef_D3Dtex->m_D3Dtex->UnlockRect(Level);
+	else ret = m_D3Dtex->UnlockRect(Level);
+
+  if (ret==D3D_OK && Level==0 && !FAKE)
+  {
+    void *cpy;
+    long dev = m_D3Ddev->QueryInterface( IID_IDirect3DTexture9, &cpy);
+    if (dev==0x01000000L) ((uMod_IDirect3DDevice9*)m_D3Ddev)->TextureContentChanged(this);
+    else ((uMod_IDirect3DDevice9Ex*)m_D3Ddev)->TextureContentChanged(this);
+  }
+
+	return (ret);
 }
 
 //this function yields for the non switched texture object

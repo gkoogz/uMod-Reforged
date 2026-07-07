@@ -150,9 +150,9 @@ static bool ExtractEmbeddedDll(const wxString &destination)
 static bool EnsureInjectedDllAvailable(wxString &dll_path)
 {
   dll_path = GetInjectedDllPath();
-  if (wxFile::Access(dll_path, wxFile::read)) return true;
   GetReforgedAppDataDir();
-  return ExtractEmbeddedDll(dll_path);
+  if (ExtractEmbeddedDll(dll_path)) return true;
+  return wxFile::Access(dll_path, wxFile::read);
 }
 
 static bool TerminateProcessesByName(const wchar_t *process_name)
